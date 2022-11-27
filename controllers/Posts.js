@@ -6,15 +6,23 @@ const DocumentModel = require('../models/Documents');
 var url = require('url');
 const httpStatus = require('../utils/httpStatus');
 const bcrypt = require('bcrypt');
-const { JWT_SECRET } = require('../constants/constants');
+const {
+  JWT_SECRET,
+  DOCUMENT_TYPE_IMAGE,
+  DOCUMENT_TYPE_VIDEO,
+} = require('../constants/constants');
 const { ROLE_CUSTOMER } = require('../constants/constants');
 const uploadFile = require('../functions/uploadFile');
 
 const postsController = {};
+/**
+ * [POST] /api/v1/posts/create
+ * Thêm bài đăng
+ */
 postsController.create = async (req, res, next) => {
   let userId = req.userId;
   try {
-    const { described, images, videos } = req.body;
+    const { described, images, video } = req.body;
 
     // Validate
     if (Array.isArray(images) && images.length > 4) {
@@ -22,7 +30,7 @@ postsController.create = async (req, res, next) => {
         message: 'Số lượng ảnh không được vượt quá 4.',
       });
     }
-    if (Array.isArray(images) && Array.isArray(videos)) {
+    if (Array.isArray(images) && video) {
       if (images.length > 0 && videos.length > 0) {
         return res.status(httpStatus.BAD_REQUEST).json({
           message: 'Không thể đăng cả ảnh và video.',
@@ -33,41 +41,34 @@ postsController.create = async (req, res, next) => {
     // Lưu ảnh
     let dataImages = [];
     if (Array.isArray(images)) {
+      let sortOrder = 1;
       for (const image of images) {
-        if (uploadFile.matchesFileBase64(image) !== false) {
-          const imageResult = uploadFile.uploadFile(image);
-          if (imageResult !== false) {
-            let imageDocument = new DocumentModel({
-              fileName: imageResult.fileName,
-              fileSize: imageResult.fileSize,
-              type: imageResult.type,
-            });
-            let savedImageDocument = await imageDocument.save();
-            if (savedImageDocument !== null) {
-              dataImages.push(savedImageDocument._id);
-            }
-          }
+        let imageDocument = new DocumentModel({
+          fileName: image.fileName,
+          fileLink: image.fileLink,
+          sortOrder: sortOrder,
+          type: DOCUMENT_TYPE_IMAGE,
+        });
+        let savedImageDocument = await imageDocument.save();
+        if (savedImageDocument !== null) {
+          sortOrder++;
+          dataImages.push(savedImageDocument._id);
         }
       }
     }
 
     // Lưu video
-    let dataVideos = [];
-    if (Array.isArray(videos)) {
-      const video = videos[0];
-      if (uploadFile.matchesFileBase64(video) !== false) {
-        const videoResult = uploadFile.uploadFile(video);
-        if (videoResult !== false) {
-          let videoDocument = new DocumentModel({
-            fileName: videoResult.fileName,
-            fileSize: videoResult.fileSize,
-            type: videoResult.type,
-          });
-          let savedVideoDocument = await videoDocument.save();
-          if (savedVideoDocument !== null) {
-            dataVideos.push(savedVideoDocument._id);
-          }
-        }
+    let dataVideos;
+    if (video) {
+      let videoDocument = new DocumentModel({
+        fileName: video.fileName,
+        fileLink: video.fileLink,
+        sortOrder: 1,
+        type: DOCUMENT_TYPE_VIDEO,
+      });
+      let savedVideoDocument = await videoDocument.save();
+      if (savedVideoDocument !== null) {
+        dataVideos = savedVideoDocument._id;
       }
     }
 
@@ -80,15 +81,15 @@ postsController.create = async (req, res, next) => {
     });
     let postSaved = (await post.save()).populate('images').populate('videos');
     postSaved = await PostModel.findById(postSaved._id)
-      .populate('images', ['fileName'])
-      .populate('videos', ['fileName'])
+      .populate('images', ['fileName', 'fileLink', 'sortOrder'])
+      .populate('videos', ['fileName', 'fileLink', 'sortOrder'])
       .populate({
         path: 'author',
         select: '_id username phonenumber avatar',
         model: 'Users',
         populate: {
           path: 'avatar',
-          select: '_id fileName',
+          select: '_id fileName fileLink',
           model: 'Documents',
         },
       });
