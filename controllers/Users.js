@@ -24,7 +24,7 @@ usersController.register = async (req, res, next) => {
     //Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-    let avatar = await DocumentModel.findById('60c39f54f0b2c4268eb53367');
+    let avatar = await DocumentModel.findById('6383832d72fb1ea2dbff7417');
     let coverImage = await DocumentModel.findById('60c39eb8f0b2c4268eb53366');
     user = new UserModel({
       phonenumber: phonenumber,
@@ -34,7 +34,7 @@ usersController.register = async (req, res, next) => {
       lastName: lastName,
       gender: gender,
       birthday: birthday,
-      avatar: '60c39f54f0b2c4268eb53367',
+      avatar: '6383832d72fb1ea2dbff7417',
       cover_image: '60c39eb8f0b2c4268eb53366',
     });
 
@@ -94,6 +94,7 @@ usersController.login = async (req, res, next) => {
     }
 
     // login success
+    const avatar = await DocumentModel.findById(user.avatar);
 
     // create and assign a token
     const token = jwt.sign(
@@ -111,7 +112,7 @@ usersController.login = async (req, res, next) => {
         id: user._id,
         phonenumber: user.phonenumber,
         username: user.username,
-        avatar: user.avatar,
+        avatar: avatar,
         cover_image: user.cover_image,
       },
       token: token,

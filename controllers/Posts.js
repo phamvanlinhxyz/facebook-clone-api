@@ -89,7 +89,7 @@ postsController.create = async (req, res, next) => {
         model: 'Users',
         populate: {
           path: 'avatar',
-          select: '_id fileName fileLink',
+          select: '_id fileName fileLink sortOrder fileLink',
           model: 'Documents',
         },
       });
@@ -183,15 +183,15 @@ postsController.edit = async (req, res, next) => {
       videos: dataVideos,
     });
     postSaved = await PostModel.findById(postSaved._id)
-      .populate('images', ['fileName'])
-      .populate('videos', ['fileName'])
+      .populate('images', ['fileName', 'fileLink', 'sortOrder'])
+      .populate('videos', ['fileName', 'fileLink', 'sortOrder'])
       .populate({
         path: 'author',
         select: '_id username phonenumber avatar',
         model: 'Users',
         populate: {
           path: 'avatar',
-          select: '_id fileName',
+          select: '_id fileName fileLink sortOrder',
           model: 'Documents',
         },
       });
@@ -207,15 +207,15 @@ postsController.edit = async (req, res, next) => {
 postsController.show = async (req, res, next) => {
   try {
     let post = await PostModel.findById(req.params.id)
-      .populate('images', ['fileName'])
-      .populate('videos', ['fileName'])
+      .populate('images', ['fileName', 'fileLink', 'sortOrder'])
+      .populate('videos', ['fileName', 'fileLink', 'sortOrder'])
       .populate({
         path: 'author',
         select: '_id username phonenumber avatar',
         model: 'Users',
         populate: {
           path: 'avatar',
-          select: '_id fileName',
+          select: '_id fileName fileLink sortOrder',
           model: 'Documents',
         },
       });
@@ -262,18 +262,19 @@ postsController.list = async (req, res, next) => {
       posts = await PostModel.find({
         author: req.query.userId,
       })
-        .populate('images', ['fileName'])
-        .populate('videos', ['fileName'])
+        .populate('images', ['fileName', 'fileLink', 'sortOrder'])
+        .populate('videos', ['fileName', 'fileLink', 'sortOrder'])
         .populate({
           path: 'author',
           select: '_id username phonenumber avatar',
           model: 'Users',
           populate: {
             path: 'avatar',
-            select: '_id fileName',
+            select: '_id fileName fileLink sortOrder',
             model: 'Documents',
           },
-        });
+        })
+        .sort({ updatedAt: -1 });
     } else {
       const user = await UserModel.findById(userId);
       const blockedDiaryList = user.blocked_diary ? user.blocked_diary : [];
@@ -306,18 +307,19 @@ postsController.list = async (req, res, next) => {
       posts = await PostModel.find({
         author: listIdFriends,
       })
-        .populate('images', ['fileName'])
-        .populate('videos', ['fileName'])
+        .populate('images', ['fileName', 'fileLink', 'sortOrder'])
+        .populate('videos', ['fileName', 'fileLink', 'sortOrder'])
         .populate({
           path: 'author',
           select: '_id username phonenumber avatar',
           model: 'Users',
           populate: {
             path: 'avatar',
-            select: '_id fileName',
+            select: '_id fileName fileLink sortOrder',
             model: 'Documents',
           },
-        });
+        })
+        .sort({ updatedAt: -1 });
     }
     let postWithIsLike = [];
     for (let i = 0; i < posts.length; i++) {
