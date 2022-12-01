@@ -1,19 +1,12 @@
-const jwt = require('jsonwebtoken');
 const UserModel = require('../models/Users');
 const PostModel = require('../models/Posts');
 const FriendModel = require('../models/Friends');
 const DocumentModel = require('../models/Documents');
-var url = require('url');
 const httpStatus = require('../utils/httpStatus');
-const bcrypt = require('bcrypt');
 const {
-  JWT_SECRET,
   DOCUMENT_TYPE_IMAGE,
   DOCUMENT_TYPE_VIDEO,
 } = require('../constants/constants');
-const { ROLE_CUSTOMER } = require('../constants/constants');
-const uploadFile = require('../functions/uploadFile');
-
 const postsController = {};
 /**
  * [POST] /api/v1/posts/create
@@ -110,70 +103,73 @@ postsController.edit = async (req, res, next) => {
     if (postFind == null) {
       return res
         .status(httpStatus.NOT_FOUND)
-        .json({ message: 'Can not find post' });
+        .json({ message: 'Không tìm thấy bài đăng.' });
     }
     if (postFind.author.toString() !== userId) {
       return res
         .status(httpStatus.FORBIDDEN)
-        .json({ message: 'Can not edit this post' });
+        .json({ message: 'Bạn không có quyền sửa bài đăng này.' });
     }
 
-    const { described, images, videos } = req.body;
+    const {
+      described,
+      oldImages,
+      newImages,
+      oldVideo,
+      newVideo,
+      deletedDocument,
+    } = req.body;
+
+    // Xử lý các document bị xóa
+    if (deletedDocument.length > 0) {
+      for (const doc of deletedDocument) {
+        await DocumentModel.findByIdAndDelete(doc._id);
+      }
+    }
+
     let dataImages = [];
-    if (Array.isArray(images)) {
-      for (const image of images) {
-        // check is old file
+    let sortOrder = 1;
+    // Ảnh cũ
+    if (Array.isArray(oldImages)) {
+      for (const image of oldImages) {
+        // Đánh lại sortOrder
         if (image) {
-          let imageFile = !image.includes('data:')
-            ? await DocumentModel.findById(image)
-            : null;
-          if (imageFile == null) {
-            if (uploadFile.matchesFileBase64(image) !== false) {
-              const imageResult = uploadFile.uploadFile(image);
-              if (imageResult !== false) {
-                let imageDocument = new DocumentModel({
-                  fileName: imageResult.fileName,
-                  fileSize: imageResult.fileSize,
-                  type: imageResult.type,
-                });
-                let savedImageDocument = await imageDocument.save();
-                if (savedImageDocument !== null) {
-                  dataImages.push(savedImageDocument._id);
-                }
-              }
-            }
-          } else {
-            dataImages.push(image);
-          }
+          await DocumentModel.findByIdAndUpdate(image._id, {
+            sortOrder: sortOrder,
+          });
+          sortOrder++;
+          dataImages.push(image._id);
+        }
+      }
+    }
+    // Thêm ảnh mới
+    if (Array.isArray(newImages)) {
+      for (const image of newImages) {
+        let imageDocument = new DocumentModel({
+          fileName: image.fileName,
+          fileLink: image.fileLink,
+          sortOrder: sortOrder,
+          type: DOCUMENT_TYPE_IMAGE,
+        });
+        let savedImageDocument = await imageDocument.save();
+        if (savedImageDocument !== null) {
+          sortOrder++;
+          dataImages.push(savedImageDocument._id);
         }
       }
     }
 
-    let dataVideos = [];
-    if (Array.isArray(videos)) {
-      for (const video of videos) {
-        // check is old file
-        if (video) {
-          let videoFile = !video.includes('data:')
-            ? await DocumentModel.findById(video)
-            : null;
-          if (videoFile == null) {
-            if (uploadFile.matchesFileBase64(video) !== false) {
-              const videoResult = uploadFile.uploadFile(video);
-              if (videoResult !== false) {
-                let videoDocument = new DocumentModel({
-                  fileName: videoResult.fileName,
-                  fileSize: videoResult.fileSize,
-                  type: videoResult.type,
-                });
-                let savedVideoDocument = await videoDocument.save();
-                if (savedVideoDocument !== null) {
-                  dataVideos.push(savedVideoDocument._id);
-                }
-              }
-            }
-          }
-        }
+    let dataVideos = oldVideo._id;
+    if (newVideo) {
+      let videoDocument = new DocumentModel({
+        fileName: newVideo.fileName,
+        fileLink: newVideo.fileLink,
+        sortOrder: 1,
+        tyep: DOCUMENT_TYPE_VIDEO,
+      });
+      let savedVideoDocument = await videoDocument.save();
+      if (savedVideoDocument !== null) {
+        dataVideos = savedVideoDocument._id;
       }
     }
 
@@ -274,7 +270,7 @@ postsController.list = async (req, res, next) => {
             model: 'Documents',
           },
         })
-        .sort({ updatedAt: -1 });
+        .sort({ createdAt: -1 });
     } else {
       const user = await UserModel.findById(userId);
       const blockedDiaryList = user.blocked_diary ? user.blocked_diary : [];
