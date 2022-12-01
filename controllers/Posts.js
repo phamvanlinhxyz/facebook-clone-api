@@ -205,6 +205,11 @@ postsController.edit = async (req, res, next) => {
     });
   }
 };
+
+/**
+ * [POST] /api/v1/posts/show/:id
+ * Lấy ra 1 bài viết
+ */
 postsController.show = async (req, res, next) => {
   try {
     let post = await PostModel.findById(req.params.id)
@@ -236,16 +241,22 @@ postsController.show = async (req, res, next) => {
   }
 };
 
+/**
+ * [GET] /api/v1/posts/delete/:id
+ * Xóa bài đăng
+ */
 postsController.delete = async (req, res, next) => {
   try {
-    let post = await PostModel.findByIdAndDelete(req.params.id);
+    let post = await PostModel.findByIdAndUpdate(req.params.id, {
+      inactive: true,
+    });
     if (post == null) {
       return res
         .status(httpStatus.NOT_FOUND)
-        .json({ message: 'Can not find post' });
+        .json({ message: 'Bài viết không tồn tại.' });
     }
     return res.status(httpStatus.OK).json({
-      message: 'Delete post done',
+      data: post._id,
     });
   } catch (error) {
     return res
@@ -266,6 +277,7 @@ postsController.list = async (req, res, next) => {
       // get Post of one user
       posts = await PostModel.find({
         author: req.query.userId,
+        inactive: { $ne: true },
       })
         .populate('images', ['fileName', 'fileLink', 'sortOrder'])
         .populate('videos', ['fileName', 'fileLink', 'sortOrder'])
@@ -311,6 +323,7 @@ postsController.list = async (req, res, next) => {
       // get post of friends of 1 user
       posts = await PostModel.find({
         author: listIdFriends,
+        inactive: { $ne: true },
       })
         .populate('images', ['fileName', 'fileLink', 'sortOrder'])
         .populate('videos', ['fileName', 'fileLink', 'sortOrder'])
@@ -324,7 +337,7 @@ postsController.list = async (req, res, next) => {
             model: 'Documents',
           },
         })
-        .sort({ updatedAt: -1 });
+        .sort({ createdAt: -1 });
     }
     let postWithIsLike = [];
     for (let i = 0; i < posts.length; i++) {
