@@ -95,6 +95,11 @@ postsController.create = async (req, res, next) => {
     });
   }
 };
+
+/**
+ * [POST] /api/v1/posts/edit/:id
+ * Sửa bài đăng
+ */
 postsController.edit = async (req, res, next) => {
   try {
     let userId = req.userId;
@@ -249,6 +254,10 @@ postsController.delete = async (req, res, next) => {
   }
 };
 
+/**
+ * [GET] /api/v1/posts/list
+ * Lấy danh sách bài đăng
+ */
 postsController.list = async (req, res, next) => {
   try {
     let posts = [];
