@@ -13,7 +13,15 @@ searchController.search = async (req, res, next) => {
   try {
     let key = req.params.key;
     userId = req.userId;
-    let authors = [userId];
+
+    let friends1 = await FriendModel.find({ sender: req.userId }).distinct(
+      'receiver'
+    );
+    let friends2 = await FriendModel.find({ receiver: req.userId }).distinct(
+      'sender'
+    );
+
+    let authors = [...friends1, ...friends2, userId];
 
     const posts = await PostModel.find({
       author: authors,

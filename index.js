@@ -11,10 +11,12 @@ const app2 = express();
 const http = require('http');
 const chatServer = http.createServer(app2);
 const { Server } = require('socket.io');
-const io = new Server(chatServer);
 const jwt = require('jsonwebtoken');
 const chatController = require('./controllers/Chats');
+const notificationsController = require('./controllers/Notifications');
 const { Socket } = require('dgram');
+const Notifications = require('./models/Notifications');
+const { enumNotificationType } = require('./common/enum');
 // const MessageModel = require("../models/Messages");
 
 // connect to mongodb
@@ -53,13 +55,17 @@ app.listen(PORT, () => {
 var socketIds = {};
 var mapSocketIds = {};
 
+const io = new Server(chatServer, {
+  cors: {
+    origin: function (origin, callback) {
+      callback(null, true);
+    },
+    credentials: true,
+  },
+});
+
 // Socket.io chat realtime
 io.on('connection', (socket) => {
-  // MessageModel.find().then(result => {
-  //     socket.emit('output-messages', result)
-  // })
-  // console.log('a user connected: ', socket.id);
-  // console.log(socket.id);
   if (socket.handshake.headers.token) {
     try {
       decoded = jwt.verify(
@@ -85,13 +91,14 @@ io.on('connection', (socket) => {
     let userId = mapSocketIds[socket.id];
     if (socketIds[userId]) {
       for (let i = 0; i < socketIds[userId].length; i++) {
+        console.log(
+          'a user disconnected, account devices: ' + socketIds[userId]
+        );
         if (socketIds[userId][i] == socket.id) {
           socketIds[userId].splice(i, 1);
         }
       }
     }
-
-    // console.log(socketIds[userId])
   });
   socket.on('chatmessage', async (msg) => {
     // console.log(msg.token)
@@ -190,6 +197,30 @@ io.on('connection', (socket) => {
         msg.userId = decoded.id;
         delete msg.token;
         await chatController.seenMessage(msg);
+      } catch (e) {
+        console.log(e);
+      }
+    }
+  });
+
+  socket.on('pushNotification', async (msg) => {
+    if (msg.token) {
+      try {
+        decoded = jwt.verify(msg.token, process.env.JWT_SECRET);
+        msg.userId = decoded.id;
+        delete msg.token;
+
+        msg.data = await notificationsController.create(
+          enumNotificationType.requestFriend,
+          msg.receiverId,
+          msg.userId
+        );
+
+        if (socketIds[msg.receiverId]) {
+          for (let i = 0; i < socketIds[msg.receiverId].length; i++) {
+            io.to(socketIds[msg.receiverId][i]).emit('pushNotification', msg);
+          }
+        }
       } catch (e) {
         console.log(e);
       }
