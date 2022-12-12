@@ -42,20 +42,11 @@ notificationsController.create = async (type, receiver, sender) => {
       .select('username avatar')
       .populate('avatar');
 
-    let content = '';
-    switch (type) {
-      case enumNotificationType.requestFriend:
-        content = senderRc.username + ' đã yêu cầu kết bạn với bạn.';
-        break;
-      default:
-        break;
-    }
-
     let newNotification = await NotificationModel.create({
       sender: senderRc,
       receiver: receiver,
-      content: content,
       read: false,
+      type: type,
     });
 
     let dbOption = await UserOptionModel.findOne({

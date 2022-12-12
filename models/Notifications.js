@@ -9,10 +9,6 @@ const notificationsSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Users',
   },
-  content: {
-    type: String,
-    required: false,
-  },
   read: {
     type: Boolean,
     required: false,

@@ -7,6 +7,7 @@ const {
   DOCUMENT_TYPE_IMAGE,
   DOCUMENT_TYPE_VIDEO,
 } = require('../constants/constants');
+const { enumPostType } = require('../common/enum');
 const postsController = {};
 /**
  * [POST] /api/v1/posts/create
@@ -71,6 +72,7 @@ postsController.create = async (req, res, next) => {
       images: dataImages,
       videos: dataVideos,
       countComments: 0,
+      type: req.body.type,
     });
     let postSaved = (await post.save()).populate('images').populate('videos');
     postSaved = await PostModel.findById(postSaved._id)
@@ -248,7 +250,7 @@ postsController.show = async (req, res, next) => {
 postsController.delete = async (req, res, next) => {
   try {
     let post = await PostModel.findByIdAndUpdate(req.params.id, {
-      inactive: true,
+      type: enumPostType.deleted,
     });
     if (post == null) {
       return res
@@ -277,7 +279,7 @@ postsController.list = async (req, res, next) => {
       // get Post of one user
       posts = await PostModel.find({
         author: req.query.userId,
-        inactive: { $ne: true },
+        type: enumPostType.posted,
       })
         .populate('images', ['fileName', 'fileLink', 'sortOrder'])
         .populate('videos', ['fileName', 'fileLink', 'sortOrder'])
@@ -323,7 +325,7 @@ postsController.list = async (req, res, next) => {
       // get post of friends of 1 user
       posts = await PostModel.find({
         author: listIdFriends,
-        inactive: { $ne: true },
+        type: enumPostType.posted,
       })
         .populate('images', ['fileName', 'fileLink', 'sortOrder'])
         .populate('videos', ['fileName', 'fileLink', 'sortOrder'])

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { enumPostType } = require('../common/enum');
 
 const postsSchema = new mongoose.Schema({
   author: {
@@ -35,10 +36,10 @@ const postsSchema = new mongoose.Schema({
     required: false,
     default: false,
   },
-  inactive: {
-    type: Boolean,
+  type: {
+    type: Number,
     required: false,
-    default: false,
+    default: enumPostType.draft,
   },
 });
 postsSchema.set('timestamps', true);

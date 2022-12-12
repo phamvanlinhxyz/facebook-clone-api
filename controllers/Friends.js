@@ -318,6 +318,64 @@ friendsController.setRemoveFriend = async (req, res, next) => {
   }
 };
 
+friendsController.getSingleRequest = async (req, res, next) => {
+  try {
+    let receiver = req.userId;
+    let sender = req.params.sender;
+    let request = await FriendModel.findOne({
+      receiver: receiver,
+      sender: sender,
+      status: enumFriendStatus.requested,
+    }).populate({
+      path: 'sender',
+      model: 'Users',
+      select: 'username createdAt',
+      populate: {
+        path: 'avatar',
+      },
+    });
+
+    let requestClone = JSON.parse(JSON.stringify(request));
+    let mutualFriends = await FriendModel.countDocuments({
+      $and: [
+        {
+          $or: [
+            {
+              sender: receiver,
+              status: enumFriendStatus.accepted,
+            },
+            {
+              receiver: receiver,
+              status: enumFriendStatus.accepted,
+            },
+          ],
+        },
+        {
+          $or: [
+            {
+              sender: sender,
+              status: enumFriendStatus.accepted,
+            },
+            {
+              receiver: sender,
+              status: enumFriendStatus.accepted,
+            },
+          ],
+        },
+      ],
+    });
+    requestClone['mutualFriends'] = mutualFriends;
+
+    res.status(httpStatus.OK).json({
+      data: requestClone,
+    });
+  } catch (e) {
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: e.message,
+    });
+  }
+};
+
 friendsController.listFriends = async (req, res, next) => {
   try {
     // console.log(req);
