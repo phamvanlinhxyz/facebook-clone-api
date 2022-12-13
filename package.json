@@ -1,10 +1,10 @@
 {
-  "name": "cafe_do_an_thiet_ke_cnpm",
+  "name": "facebook_clone_api",
   "version": "1.0.0",
-  "description": "restful-api-cafe_do_an_thiet_ke_cnpm",
+  "description": "",
   "main": "index.js",
-  "repository": "https://github.com/tonytran99/do_an_thiet_ke_cnpm_20202.git",
-  "author": "tonytran99",
+  "repository": "https://github.com/phamvanlinhxyz/facebook-clone-api",
+  "author": "phamvanlinhxyz",
   "license": "MIT",
   "scripts": {
     "start": "nodemon index.js"

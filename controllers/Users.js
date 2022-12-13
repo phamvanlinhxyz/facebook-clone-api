@@ -24,8 +24,18 @@ usersController.register = async (req, res, next) => {
     //Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-    let avatar = await DocumentModel.findById('6383832d72fb1ea2dbff7417');
-    let coverImage = await DocumentModel.findById('60c39eb8f0b2c4268eb53366');
+    let avatar = await DocumentModel.findOne({ fileName: 'avatar-default' });
+    if (!avatar) {
+      let defaultAvt =
+        'https://firebasestorage.googleapis.com/v0/b/facebook-60d2c.appspot.com/o/images%2F72811831_182945596079578_316116306019483648_n.jpg?alt=media&token=f84fdb83-b271-403f-8b7e-eb916669198d';
+      avatar = await DocumentMode.create({
+        type: 'image',
+        fileName: 'avatar-default',
+        fileLink: defaultAvt,
+        sortOrder: 1,
+      });
+    }
+
     user = new UserModel({
       phonenumber: phonenumber,
       password: hashedPassword,
@@ -34,8 +44,8 @@ usersController.register = async (req, res, next) => {
       lastName: lastName,
       gender: gender,
       birthday: birthday,
-      avatar: '6383832d72fb1ea2dbff7417',
-      cover_image: '60c39eb8f0b2c4268eb53366',
+      avatar: avatar._id,
+      cover_image: null,
     });
 
     try {
@@ -58,7 +68,7 @@ usersController.register = async (req, res, next) => {
           phonenumber: savedUser.phonenumber,
           username: savedUser.username,
           avatar: avatar,
-          cover_image: coverImage,
+          cover_image: null,
         },
         token: token,
       });
