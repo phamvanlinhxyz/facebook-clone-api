@@ -175,7 +175,7 @@ friendsController.getSuggests = async (req, res, next) => {
     let suggests = await UserModel.find({
       _id: { $nin: [...friends1, ...friends2, req.userId] },
     })
-      .select('username image')
+      .select('username')
       .populate('avatar')
       .skip(parseInt(offset))
       .limit(parseInt(limit));
@@ -378,32 +378,78 @@ friendsController.getSingleRequest = async (req, res, next) => {
 
 friendsController.listFriends = async (req, res, next) => {
   try {
-    // console.log(req);
-    if (req.body.user_id == null) {
-      let requested = await FriendModel.find({
-        sender: req.userId,
-        status: '1',
-      }).distinct('receiver');
-      let accepted = await FriendModel.find({
-        receiver: req.userId,
-        status: '1',
-      }).distinct('sender');
+    const { limit, offset, search } = req.query;
 
-      let users = await UserModel.find()
-        .where('_id')
-        .in(requested.concat(accepted))
-        .populate('avatar')
-        .populate('cover_image')
-        .exec();
+    let requested = await FriendModel.find({
+      sender: req.userId,
+      status: enumFriendStatus.accepted,
+    }).distinct('receiver');
+    let accepted = await FriendModel.find({
+      receiver: req.userId,
+      status: enumFriendStatus.accepted,
+    }).distinct('sender');
 
-      res.status(200).json({
-        code: 200,
-        message: 'Danh sách bạn bè',
-        data: {
-          friends: users,
-        },
+    let users = await UserModel.find({
+      _id: { $in: requested.concat(accepted) },
+      username: {
+        $regex: search,
+        $options: 'i',
+      },
+    })
+      .select('username avatar')
+      .populate('avatar')
+      .populate('cover_image')
+      .skip(parseInt(offset))
+      .limit(parseInt(limit))
+      .sort({ updatedAt: -1 });
+
+    let lstFriendClone = JSON.parse(JSON.stringify(users));
+
+    for (let item of lstFriendClone) {
+      let mutualFriends = await FriendModel.countDocuments({
+        $and: [
+          {
+            $or: [
+              {
+                sender: req.userId,
+                status: enumFriendStatus.accepted,
+              },
+              {
+                receiver: req.userId,
+                status: enumFriendStatus.accepted,
+              },
+            ],
+          },
+          {
+            $or: [
+              {
+                sender: item._id,
+                status: enumFriendStatus.accepted,
+              },
+              {
+                receiver: item._id,
+                status: enumFriendStatus.accepted,
+              },
+            ],
+          },
+        ],
       });
+
+      item['mutualFriends'] = mutualFriends;
     }
+
+    const totalFriends = await UserModel.countDocuments({
+      _id: { $in: requested.concat(accepted) },
+      username: {
+        $regex: search,
+        $options: 'i',
+      },
+    });
+
+    res.status(200).json({
+      data: lstFriendClone,
+      totalFriends: totalFriends,
+    });
   } catch (e) {
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
       message: e.message,

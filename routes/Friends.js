@@ -11,7 +11,7 @@ friendsRoutes.get('/getSuggests', auth, friendController.getSuggests);
 friendsRoutes.post('/replyRequest', auth, friendController.replyRequest);
 friendsRoutes.post('/cancel-request', auth, friendController.cancelRequest);
 friendsRoutes.post('/set-remove', auth, friendController.setRemoveFriend);
-friendsRoutes.post('/list', auth, friendController.listFriends);
+friendsRoutes.get('/list', auth, friendController.listFriends);
 friendsRoutes.get('/list_requests', auth, friendController.listRequests);
 friendsRoutes.get('/status/:friendId', auth, friendController.friendStatus);
 friendsRoutes.get(
