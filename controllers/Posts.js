@@ -166,7 +166,10 @@ postsController.edit = async (req, res, next) => {
       }
     }
 
-    let dataVideos = oldVideo._id;
+    let dataVideos;
+    if (oldVideo) {
+      dataVideos = oldVideo._id;
+    }
     if (newVideo) {
       let videoDocument = new DocumentModel({
         fileName: newVideo.fileName,
@@ -202,6 +205,7 @@ postsController.edit = async (req, res, next) => {
       data: postSaved,
     });
   } catch (e) {
+    console.log(e);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
       message: e.message,
     });
