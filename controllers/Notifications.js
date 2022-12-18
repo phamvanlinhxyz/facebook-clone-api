@@ -26,8 +26,13 @@ notificationsController.listNotification = async (req, res) => {
       .skip(parseInt(offset))
       .limit(parseInt(limit));
 
+    let totalNotification = await NotificationModel.countDocuments({
+      receiver: receiver,
+    });
+
     return res.status(httpStatus.OK).json({
       data: notifications,
+      total: totalNotification,
     });
   } catch (e) {
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
