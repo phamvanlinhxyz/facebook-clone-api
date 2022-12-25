@@ -24,7 +24,6 @@ const usersSchema = new mongoose.Schema({
     required: false,
     max: 30,
   },
-  middleName: {
     type: String,
     required: false,
     max: 30,
