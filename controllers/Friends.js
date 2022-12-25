@@ -273,6 +273,32 @@ friendsController.replyRequest = async (req, res, next) => {
   }
 };
 
+/**
+ * [GET] /api/v1/friends/block
+ * Lấy danh sách block
+ */
+friendsController.getListBlock = async (req, res) => {
+  try {
+    let lstBlock = await FriendModel.find({
+      sender: req.userId,
+      status: enumFriendStatus.blocked,
+    }).populate({
+      path: 'receiver',
+      model: 'Users',
+      select: 'username avatar',
+      populate: 'avatar',
+    });
+
+    res.status(httpStatus.OK).json({
+      data: lstBlock,
+    });
+  } catch (e) {
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: e.message,
+    });
+  }
+};
+
 friendsController.setRemoveFriend = async (req, res, next) => {
   try {
     let receiver = req.userId;

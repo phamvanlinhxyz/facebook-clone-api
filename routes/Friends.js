@@ -9,6 +9,7 @@ friendsRoutes.post('/sendRequest', auth, friendController.sendRequest);
 friendsRoutes.get('/getRequests', auth, friendController.getRequests);
 friendsRoutes.get('/getSuggests', auth, friendController.getSuggests);
 friendsRoutes.post('/replyRequest', auth, friendController.replyRequest);
+friendsRoutes.get('/block', auth, friendController.getListBlock);
 friendsRoutes.post('/cancel-request', auth, friendController.cancelRequest);
 friendsRoutes.post('/set-remove', auth, friendController.setRemoveFriend);
 friendsRoutes.get('/list', auth, friendController.listFriends);
