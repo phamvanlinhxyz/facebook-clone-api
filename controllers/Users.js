@@ -1,12 +1,17 @@
 const jwt = require('jsonwebtoken');
 const UserModel = require('../models/Users');
 const DocumentModel = require('../models/Documents');
+const FriendModel = require('../models/Friends');
 const httpStatus = require('../utils/httpStatus');
 const bcrypt = require('bcrypt');
-const { JWT_SECRET } = require('../constants/constants');
-const uploadFile = require('../functions/uploadFile');
+const { JWT_SECRET, DOCUMENT_TYPE_IMAGE } = require('../constants/constants');
+const { enumFriendStatus } = require('../common/enum');
 const usersController = {};
 
+/**
+ * [POST] /api/v1/users/register
+ * Đăng ký
+ */
 usersController.register = async (req, res, next) => {
   try {
     const { phonenumber, password, firstName, lastName, gender, birthday } =
@@ -45,7 +50,7 @@ usersController.register = async (req, res, next) => {
       gender: gender,
       birthday: birthday,
       avatar: avatar._id,
-      cover_image: null,
+      coverImage: null,
     });
 
     try {
@@ -68,7 +73,7 @@ usersController.register = async (req, res, next) => {
           phonenumber: savedUser.phonenumber,
           username: savedUser.username,
           avatar: avatar,
-          cover_image: null,
+          coverImage: null,
         },
         token: token,
       });
@@ -83,6 +88,11 @@ usersController.register = async (req, res, next) => {
     });
   }
 };
+
+/**
+ * [POST] /api/v1/users/login
+ * Đăng nhập
+ */
 usersController.login = async (req, res, next) => {
   try {
     const { phonenumber, password } = req.body;
@@ -123,7 +133,7 @@ usersController.login = async (req, res, next) => {
         phonenumber: user.phonenumber,
         username: user.username,
         avatar: avatar,
-        cover_image: user.cover_image,
+        coverImage: user.coverImage,
       },
       token: token,
     });
@@ -133,61 +143,62 @@ usersController.login = async (req, res, next) => {
     });
   }
 };
+
+/**
+ * [POST] /api/v1/users/edit
+ * Cập nhật thông tin
+ */
 usersController.edit = async (req, res, next) => {
   try {
     let userId = req.userId;
     let user;
-    const { avatar, cover_image } = req.body;
+    const { avatar, coverImage } = req.body;
     const dataUserUpdate = {};
+    // Các trường update
     const listPros = [
-      'username',
-      'gender',
-      'birthday',
-      'description',
-      'address',
-      'city',
-      'country',
-      'avatar',
-      'cover_image',
+      'firstName', // Họ
+      'middleName', // Tên đệm
+      'lastName', // Tên
+      'username', // Tên hiển thị
+      'gender', // Giới tính
+      'birthday', // Ngày sinh
+      'description', // Tiểu sử
+      'address', // Đến từ
+      'city', // Tỉnh thành phố
+      'avatar', // Avatar
+      'coverImage', // Ảnh bìa
     ];
     for (let i = 0; i < listPros.length; i++) {
+      // Lấy ra tên các trường
       let pro = listPros[i];
       if (req.body.hasOwnProperty(pro)) {
         switch (pro) {
           case 'avatar':
+            // Lưu avatar
             let savedAvatarDocument = null;
-            if (uploadFile.matchesFileBase64(avatar) !== false) {
-              const avatarResult = uploadFile.uploadFile(avatar);
-              if (avatarResult !== false) {
-                let avatarDocument = new DocumentModel({
-                  fileName: avatarResult.fileName,
-                  fileSize: avatarResult.fileSize,
-                  type: avatarResult.type,
-                });
-                savedAvatarDocument = await avatarDocument.save();
-              }
-            } else {
-              savedAvatarDocument = await DocumentModel.findById(avatar);
+            if (avatar) {
+              let avatarDocument = new DocumentModel({
+                fileName: avatar.fileName,
+                fileLink: avatar.fileLink,
+                sortOrder: 1,
+                type: DOCUMENT_TYPE_IMAGE,
+              });
+              savedAvatarDocument = await avatarDocument.save();
             }
             dataUserUpdate[pro] =
               savedAvatarDocument !== null ? savedAvatarDocument._id : null;
             break;
-          case 'cover_image':
+          case 'coverImage':
+            // Lưu ảnh bìa
             let savedCoverImageDocument = null;
-            if (uploadFile.matchesFileBase64(cover_image) !== false) {
-              const coverImageResult = uploadFile.uploadFile(cover_image);
-              if (coverImageResult !== false) {
-                let coverImageDocument = new DocumentModel({
-                  fileName: coverImageResult.fileName,
-                  fileSize: coverImageResult.fileSize,
-                  type: coverImageResult.type,
-                });
-                savedCoverImageDocument = await coverImageDocument.save();
-              }
-            } else {
-              savedCoverImageDocument = await DocumentModel.findById(
-                cover_image
-              );
+            if (coverImage) {
+              let coverImageDocument = new DocumentModel({
+                fileName: avatacoverImager.fileName,
+                fileLink: coverImage.fileLink,
+                sortOrder: 1,
+                type: DOCUMENT_TYPE_IMAGE,
+              });
+              savedCoverImageDocument = await coverImageDocument.save();
             }
             dataUserUpdate[pro] =
               savedCoverImageDocument !== null
@@ -195,13 +206,14 @@ usersController.edit = async (req, res, next) => {
                 : null;
             break;
           default:
+            // Các trường khác thì cập nhật như bthg
             dataUserUpdate[pro] = req.body[pro];
             break;
         }
       }
     }
 
-    user = await UserModel.findOneAndUpdate({ _id: userId }, dataUserUpdate, {
+    user = await UserModel.findByIdAndUpdate(userId, dataUserUpdate, {
       new: true,
       runValidators: true,
     });
@@ -209,14 +221,12 @@ usersController.edit = async (req, res, next) => {
     if (!user) {
       return res
         .status(httpStatus.NOT_FOUND)
-        .json({ message: 'Can not find user' });
+        .json({ message: 'Không tìm thấy người dùng.' });
     }
     user = await UserModel.findById(userId)
-      .select(
-        'phonenumber username gender birthday avatar cover_image blocked_inbox blocked_diary'
-      )
+      .select('-password')
       .populate('avatar')
-      .populate('cover_image');
+      .populate('coverImage');
     return res.status(httpStatus.OK).json({
       data: user,
     });
@@ -226,6 +236,11 @@ usersController.edit = async (req, res, next) => {
     });
   }
 };
+
+/**
+ * [POST] /api/v1/users/password
+ * Đổi mật khẩu
+ */
 usersController.changePassword = async (req, res, next) => {
   try {
     let userId = req.userId;
@@ -240,8 +255,7 @@ usersController.changePassword = async (req, res, next) => {
     const validPassword = await bcrypt.compare(currentPassword, user.password);
     if (!validPassword) {
       return res.status(httpStatus.BAD_REQUEST).json({
-        message: 'Current password incorrect',
-        code: 'CURRENT_PASSWORD_INCORRECT',
+        message: 'Mật khẩu không chính xác',
       });
     }
 
@@ -277,11 +291,9 @@ usersController.changePassword = async (req, res, next) => {
       JWT_SECRET
     );
     user = await UserModel.findById(userId)
-      .select(
-        'phonenumber username gender birthday avatar cover_image blocked_inbox blocked_diary'
-      )
+      .select('-password')
       .populate('avatar')
-      .populate('cover_image');
+      .populate('coverImage');
     return res.status(httpStatus.OK).json({
       data: user,
       token: token,
@@ -292,6 +304,89 @@ usersController.changePassword = async (req, res, next) => {
     });
   }
 };
+
+/**
+ * [POST] /api/v1/users/search
+ * Tìm kiếm người dùng
+ */
+usersController.searchUser = async (req, res, next) => {
+  try {
+    let searchKey = new RegExp(req.body.keyword, 'i');
+    let result = await UserModel.find({
+      $or: [
+        { username: searchKey },
+        { firstName: searchKey },
+        { middleName: searchKey },
+        { lastName: searchKey },
+      ],
+      _id: { $ne: req.userId },
+    })
+      .skip(parseInt(req.body.offset ? req.body.offset : 0))
+      .limit(parseInt(req.body.limit ? req.body.limit : 10))
+      .select('username avatar country')
+      .populate('avatar')
+      .populate('coverImage')
+      .exec();
+
+    let cloneRes = Object.clone(result);
+
+    for (const person of cloneRes) {
+      person['mutualFriends'] = await FriendModel.countDocuments({
+        $and: [
+          {
+            $or: [
+              {
+                sender: req.userId,
+                status: enumFriendStatus.accepted,
+              },
+              {
+                receiver: req.userId,
+                status: enumFriendStatus.accepted,
+              },
+            ],
+          },
+          {
+            $or: [
+              {
+                sender: person._id,
+                status: enumFriendStatus.accepted,
+              },
+              {
+                receiver: person._id,
+                status: enumFriendStatus.accepted,
+              },
+            ],
+          },
+        ],
+      });
+
+      person['isFriend'] =
+        (await FriendModel.countDocuments({
+          $or: [
+            {
+              sender: req.userId,
+              receiver: person._id,
+              status: enumFriendStatus.accepted,
+            },
+            {
+              receiver: req.userId,
+              sender: person._id,
+              status: enumFriendStatus.accepted,
+            },
+          ],
+        })) > 0;
+    }
+
+    res.status(200).json({
+      data: cloneRes,
+    });
+  } catch (e) {
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: e.message,
+    });
+  }
+};
+
 usersController.show = async (req, res, next) => {
   try {
     let userId = null;
@@ -303,10 +398,10 @@ usersController.show = async (req, res, next) => {
 
     let user = await UserModel.findById(userId)
       .select(
-        'phonenumber username gender birthday avatar cover_image blocked_inbox blocked_diary description'
+        'phonenumber username gender birthday avatar coverImage blocked_inbox blocked_diary description'
       )
       .populate('avatar')
-      .populate('cover_image');
+      .populate('coverImage');
     if (user == null) {
       return res
         .status(httpStatus.NOT_FOUND)
@@ -329,7 +424,7 @@ usersController.showByPhone = async (req, res, next) => {
 
     let user = await UserModel.findOne({ phonenumber: phonenumber })
       .populate('avatar')
-      .populate('cover_image');
+      .populate('coverImage');
     if (user == null) {
       return res
         .status(httpStatus.NOT_FOUND)
@@ -343,107 +438,6 @@ usersController.showByPhone = async (req, res, next) => {
     return res
       .status(httpStatus.INTERNAL_SERVER_ERROR)
       .json({ message: error.message });
-  }
-};
-
-usersController.setBlock = async (req, res, next) => {
-  try {
-    let targetId = req.body.user_id;
-    if (targetId == req.userId) {
-      return res.status(httpStatus.BAD_REQUEST).json({
-        message: 'Không thể tự chặn bản thân',
-      });
-    }
-    let type = req.body.type;
-    let user = await UserModel.findById(req.userId);
-    blocked = [];
-    if (user.hasOwnProperty('blocked')) {
-      blocked = user.blocked_inbox;
-    }
-
-    if (type) {
-      if (blocked.indexOf(targetId) === -1) {
-        blocked.push(targetId);
-      }
-    } else {
-      const index = blocked.indexOf(targetId);
-      if (index > -1) {
-        blocked.splice(index, 1);
-      }
-    }
-
-    user.blocked_inbox = blocked;
-    user.save();
-
-    res.status(200).json({
-      code: 200,
-      message: 'Thao tác thành công',
-      data: user,
-    });
-  } catch (e) {
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      message: e.message,
-    });
-  }
-};
-usersController.setBlockDiary = async (req, res, next) => {
-  try {
-    let targetId = req.body.user_id;
-    if (targetId == req.userId) {
-      return res.status(httpStatus.BAD_REQUEST).json({
-        message: 'Không thể tự chặn bản thân',
-      });
-    }
-    let type = req.body.type;
-    let user = await UserModel.findById(req.userId);
-    blocked = [];
-    if (user.hasOwnProperty('blocked')) {
-      blocked = user.blocked_diary;
-    }
-
-    if (type) {
-      if (blocked.indexOf(targetId) === -1) {
-        blocked.push(targetId);
-      }
-    } else {
-      const index = blocked.indexOf(targetId);
-      if (index > -1) {
-        blocked.splice(index, 1);
-      }
-    }
-
-    user.blocked_diary = blocked;
-    user.save();
-
-    res.status(200).json({
-      code: 200,
-      message: 'Thao tác thành công',
-      data: user,
-    });
-  } catch (e) {
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      message: e.message,
-    });
-  }
-};
-usersController.searchUser = async (req, res, next) => {
-  try {
-    let searchKey = new RegExp(req.body.keyword, 'i');
-    let result = await UserModel.find({ phonenumber: searchKey })
-      .limit(10)
-      .populate('avatar')
-      .populate('cover_image')
-      .exec();
-
-    res.status(200).json({
-      code: 200,
-      message: 'Tìm kiếm thành công',
-      data: result,
-    });
-  } catch (e) {
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      message: e.message,
-    });
   }
 };
 

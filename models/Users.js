@@ -24,6 +24,10 @@ const usersSchema = new mongoose.Schema({
     required: false,
     max: 30,
   },
+    type: String,
+    required: false,
+    max: 30,
+  },
   lastName: {
     type: String,
     required: false,
@@ -51,29 +55,13 @@ const usersSchema = new mongoose.Schema({
     type: String,
     required: false,
   },
-  country: {
-    type: String,
-    required: false,
-  },
-  link: {
-    type: String,
-    required: false,
-  },
   avatar: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Documents',
   },
-  cover_image: {
+  coverImage: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Documents',
-  },
-  blocked_inbox: {
-    type: Array,
-    required: false,
-  },
-  blocked_diary: {
-    type: Array,
-    required: false,
   },
 });
 

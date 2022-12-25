@@ -1,4 +1,5 @@
 require('dotenv').config();
+require('./extension');
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -14,6 +15,7 @@ mongoose
     useUnifiedTopology: true,
     useNewUrlParser: true,
     useCreateIndex: true,
+    useFindAndModify: false,
     dbName: process.env.DB_NAME,
   })
   .then((res) => {
