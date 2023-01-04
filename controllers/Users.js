@@ -96,7 +96,7 @@ usersController.register = async (req, res, next) => {
 usersController.login = async (req, res, next) => {
   try {
     const { phonenumber, password } = req.body;
-    const user = await UserModel.findOne({
+    let user = await UserModel.findOne({
       phonenumber: phonenumber,
     });
     if (!user) {
@@ -127,14 +127,14 @@ usersController.login = async (req, res, next) => {
       JWT_SECRET
     );
     delete user['password'];
+
+    user = await UserModel.findById(user._id)
+      .select('-password')
+      .populate('avatar')
+      .populate('coverImage');
+
     return res.status(httpStatus.OK).json({
-      data: {
-        id: user._id,
-        phonenumber: user.phonenumber,
-        username: user.username,
-        avatar: avatar,
-        coverImage: user.coverImage,
-      },
+      data: user,
       token: token,
     });
   } catch (e) {
@@ -306,12 +306,12 @@ usersController.changePassword = async (req, res, next) => {
 };
 
 /**
- * [POST] /api/v1/users/search
+ * [POST] /api/v1/users?keyword=&offset=&limit=
  * Tìm kiếm người dùng
  */
 usersController.searchUser = async (req, res, next) => {
   try {
-    let searchKey = new RegExp(req.body.keyword, 'i');
+    let searchKey = new RegExp(req.query.keyword, 'i');
     let result = await UserModel.find({
       $or: [
         { username: searchKey },
@@ -321,8 +321,8 @@ usersController.searchUser = async (req, res, next) => {
       ],
       _id: { $ne: req.userId },
     })
-      .skip(parseInt(req.body.offset ? req.body.offset : 0))
-      .limit(parseInt(req.body.limit ? req.body.limit : 10))
+      .skip(parseInt(req.query.offset ? req.query.offset : 0))
+      .limit(parseInt(req.query.limit ? req.query.limit : 10))
       .select('username avatar country')
       .populate('avatar')
       .populate('coverImage')
