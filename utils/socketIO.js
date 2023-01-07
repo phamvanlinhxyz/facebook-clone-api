@@ -63,16 +63,22 @@ function connectSocket(server) {
 
           delete msg.token;
 
-          msg.data = await notificationsController.create(
+          let res = await notificationsController.create(
             msg.type,
             msg.receiverId,
             msg.senderId,
             msg.refId
           );
 
-          if (socketIds[msg.receiverId]) {
-            for (let i = 0; i < socketIds[msg.receiverId].length; i++) {
-              io.to(socketIds[msg.receiverId][i]).emit('pushNotification', msg);
+          if (res) {
+            msg.data = res;
+            if (socketIds[msg.receiverId]) {
+              for (let i = 0; i < socketIds[msg.receiverId].length; i++) {
+                io.to(socketIds[msg.receiverId][i]).emit(
+                  'pushNotification',
+                  msg
+                );
+              }
             }
           }
         } catch (e) {
