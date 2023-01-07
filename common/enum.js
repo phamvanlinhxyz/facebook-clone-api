@@ -22,6 +22,7 @@ const enumPostType = {
 const enumNotificationType = {
   requestFriend: 1, // Gửi lời mời kết bạn
   acceptRequest: 2, // Đồng ý kết bạn
+  comment: 3, // Bình luận
 };
 
 module.exports = {

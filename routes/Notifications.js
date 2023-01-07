@@ -4,6 +4,12 @@ const express = require('express');
 const notificationsRoutes = express.Router();
 const auth = require('../middlewares/auth');
 
+notificationsRoutes.put(
+  '/:notifId',
+  auth,
+  asyncWrapper(notificationsController.update)
+);
+
 notificationsRoutes.get(
   '/',
   auth,
