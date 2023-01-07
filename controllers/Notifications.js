@@ -74,34 +74,45 @@ notificationsController.create = async (type, receiver, sender, refId) => {
       .select('username avatar')
       .populate('avatar');
 
-    let newNotification = await NotificationModel.create({
+    let notification = await NotificationModel.findOne({
       sender: senderRc,
       receiver: receiver,
-      read: false,
       type: type,
-      refId: refId,
+      refId,
+      refId,
     });
 
-    let dbOption = await UserOptionModel.findOne({
-      optionName: 'CountUnseenNotification',
-      userId: receiver,
-    });
+    if (!notification) {
+      let newNotification = await NotificationModel.create({
+        sender: senderRc,
+        receiver: receiver,
+        read: false,
+        type: type,
+        refId: refId,
+      });
 
-    if (dbOption) {
-      dbOption.optionValue = (parseInt(dbOption.optionValue) + 1).toString();
-      await dbOption.save();
-    } else {
-      dbOption = await UserOptionModel.create({
+      let dbOption = await UserOptionModel.findOne({
         optionName: 'CountUnseenNotification',
-        optionValue: '1',
         userId: receiver,
       });
-    }
 
-    return {
-      newNotification: newNotification,
-      unseenNotification: dbOption.optionValue,
-    };
+      if (dbOption) {
+        dbOption.optionValue = (parseInt(dbOption.optionValue) + 1).toString();
+        await dbOption.save();
+      } else {
+        dbOption = await UserOptionModel.create({
+          optionName: 'CountUnseenNotification',
+          optionValue: '1',
+          userId: receiver,
+        });
+      }
+
+      return {
+        newNotification: newNotification,
+        unseenNotification: dbOption.optionValue,
+      };
+    }
+    return null;
   } catch (e) {
     console.log(e);
     return null;
