@@ -66,7 +66,8 @@ function connectSocket(server) {
           msg.data = await notificationsController.create(
             msg.type,
             msg.receiverId,
-            msg.senderId
+            msg.senderId,
+            msg.refId
           );
 
           if (socketIds[msg.receiverId]) {

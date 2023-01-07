@@ -18,6 +18,10 @@ const notificationsSchema = new mongoose.Schema({
     type: Number,
     require: false,
   },
+  refId: {
+    type: mongoose.Schema.Types.ObjectId,
+    require: false,
+  },
 });
 notificationsSchema.set('timestamps', true);
 module.exports = mongoose.model('Notifications', notificationsSchema);

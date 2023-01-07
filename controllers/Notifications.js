@@ -1,12 +1,39 @@
 const httpStatus = require('../utils/httpStatus');
 const UserModel = require('../models/Users');
-const PostModel = require('../models/Posts');
-const FriendModel = require('../models/Friends');
-const DocumentModel = require('../models/Documents');
 const NotificationModel = require('../models/Notifications');
 const UserOptionModel = require('../models/UserOption');
-const { enumNotificationType } = require('../common/enum');
 const notificationsController = {};
+
+notificationsController.update = async (req, res) => {
+  try {
+    let notifId = req.params.notifId;
+
+    const updatedNotif = await NotificationModel.findByIdAndUpdate(
+      notifId,
+      req.body,
+      { new: true }
+    ).populate({
+      path: 'sender',
+      model: 'Users',
+      select: 'username avatar',
+      populate: 'avatar',
+    });
+
+    if (!updatedNotif) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        message: 'Không tìm thấy thông báo.',
+      });
+    }
+
+    res.status(httpStatus.OK).json({
+      data: updatedNotif,
+    });
+  } catch (error) {
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: e.message,
+    });
+  }
+};
 
 notificationsController.listNotification = async (req, res) => {
   try {
@@ -41,7 +68,7 @@ notificationsController.listNotification = async (req, res) => {
   }
 };
 
-notificationsController.create = async (type, receiver, sender) => {
+notificationsController.create = async (type, receiver, sender, refId) => {
   try {
     let senderRc = await UserModel.findById(sender)
       .select('username avatar')
@@ -52,6 +79,7 @@ notificationsController.create = async (type, receiver, sender) => {
       receiver: receiver,
       read: false,
       type: type,
+      refId: refId,
     });
 
     let dbOption = await UserOptionModel.findOne({
