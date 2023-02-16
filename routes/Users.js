@@ -11,6 +11,7 @@ usersRoutes.post(
   auth,
   asyncWrapper(usersController.changePassword)
 );
+usersRoutes.get('/:id/info', auth, asyncWrapper(usersController.info));
 usersRoutes.post('/', auth, asyncWrapper(usersController.edit));
 usersRoutes.get('/', auth, asyncWrapper(usersController.searchUser));
 

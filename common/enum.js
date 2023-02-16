@@ -25,8 +25,20 @@ const enumNotificationType = {
   comment: 3, // Bình luận
 };
 
+/**
+ * Enum thông tin bạn bè
+ */
+const enumFriendInfo = {
+  none: 0, // không có gì
+  requested: 1, // được yêu cầu
+  waitRequest: 2, // chờ phản hồi
+  me: 3, // là tôi
+  friend: 4, // là bạn bè
+};
+
 module.exports = {
   enumFriendStatus,
   enumNotificationType,
   enumPostType,
+  enumFriendInfo,
 };

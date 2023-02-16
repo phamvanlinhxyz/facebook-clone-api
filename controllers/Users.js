@@ -2,10 +2,15 @@ const jwt = require('jsonwebtoken');
 const UserModel = require('../models/Users');
 const DocumentModel = require('../models/Documents');
 const FriendModel = require('../models/Friends');
+const PostModel = require('../models/Posts');
 const httpStatus = require('../utils/httpStatus');
 const bcrypt = require('bcrypt');
 const { JWT_SECRET, DOCUMENT_TYPE_IMAGE } = require('../constants/constants');
-const { enumFriendStatus } = require('../common/enum');
+const {
+  enumFriendStatus,
+  enumFriendInfo,
+  enumPostType,
+} = require('../common/enum');
 const usersController = {};
 
 /**
@@ -33,7 +38,7 @@ usersController.register = async (req, res, next) => {
     if (!avatar) {
       let defaultAvt =
         'https://firebasestorage.googleapis.com/v0/b/facebook-60d2c.appspot.com/o/images%2F72811831_182945596079578_316116306019483648_n.jpg?alt=media&token=f84fdb83-b271-403f-8b7e-eb916669198d';
-      avatar = await DocumentMode.create({
+      avatar = await DocumentModel.create({
         type: 'image',
         fileName: 'avatar-default',
         fileLink: defaultAvt,
@@ -433,6 +438,92 @@ usersController.showByPhone = async (req, res, next) => {
 
     return res.status(httpStatus.OK).json({
       data: user,
+    });
+  } catch (error) {
+    return res
+      .status(httpStatus.INTERNAL_SERVER_ERROR)
+      .json({ message: error.message });
+  }
+};
+
+/**
+ * [GET] /api/v1/users/:id/info
+ */
+usersController.info = async (req, res, next) => {
+  try {
+    // Lấy id người dùng cần tìm
+    const id = req.params.id;
+
+    // Lấy ra thông tin người dùng
+    const userInfo = await UserModel.findById(id)
+      .select('username avatar coverImage')
+      .populate('avatar coverImage');
+
+    // Lấy ra trạng thái bạn bè
+    let friendStatus = enumFriendInfo.none;
+    if (req.userId === id) {
+      friendStatus = enumFriendInfo.me;
+    } else {
+      let isFriend = await FriendModel.findOne({
+        $or: [
+          { sender: id, receiver: req.userId },
+          { sender: req.userId, receiver: id },
+        ],
+      });
+      if (isFriend) {
+        if (isFriend.status === enumFriendStatus.accepted) {
+          friendStatus = enumFriendInfo.friend;
+        } else if (isFriend.sender == id) {
+          friendStatus = enumFriendInfo.requested;
+        } else {
+          friendStatus = enumFriendInfo.waitRequest;
+        }
+      }
+    }
+
+    // Lấy danh sách bạn bè
+    let requested = await FriendModel.find({
+      sender: id,
+      status: enumFriendStatus.accepted,
+    }).distinct('receiver');
+    let accepted = await FriendModel.find({
+      receiver: id,
+      status: enumFriendStatus.accepted,
+    }).distinct('sender');
+
+    let lstFriend = await UserModel.find({
+      _id: { $in: requested.concat(accepted) },
+    })
+      .select('username avatar')
+      .populate('avatar')
+      .populate('cover_image')
+      .limit(6)
+      .sort({ updatedAt: -1 });
+
+    // Lấy ra bài viết
+    const posts = await PostModel.find({
+      author: id,
+      type: enumPostType.posted,
+    })
+      .populate('images', ['fileName', 'fileLink', 'sortOrder'])
+      .populate('videos', ['fileName', 'fileLink', 'sortOrder'])
+      .populate({
+        path: 'author',
+        select: '_id username phonenumber avatar',
+        model: 'Users',
+        populate: {
+          path: 'avatar',
+          select: '_id fileName fileLink sortOrder',
+          model: 'Documents',
+        },
+      })
+      .sort({ createdAt: -1 });
+
+    res.status(httpStatus.OK).json({
+      friendStatus: friendStatus,
+      info: userInfo,
+      lstFriend: lstFriend,
+      lstPost: posts,
     });
   } catch (error) {
     return res
